@@ -1,10 +1,5 @@
 <script lang="ts">
-	import AppSidebar from "$lib/components/app-sidebar.svelte";
-	import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
-	import { Separator } from "$lib/components/ui/separator/index.js";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-    import { onMount } from 'svelte';
-
+	import { onMount } from 'svelte';
 
 	let city = "";
 	let inputCity = "";
@@ -46,7 +41,6 @@
 		}
 	}
 
-	// Get user's location on load
 	onMount(() => {
 		navigator.geolocation.getCurrentPosition(
 			(pos) => {
@@ -55,8 +49,7 @@
 			},
 			(err) => {
 				console.error("Geolocation failed:", err);
-				// Fallback to default city
-				fetchWeatherByCity("Nairobi");
+				fetchWeatherByCity("Nairobi"); // Fallback
 			}
 		);
 	});
@@ -68,68 +61,37 @@
 	}
 </script>
 
-<Sidebar.Provider>
-	<AppSidebar />
-	<Sidebar.Inset>
-		<header class="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-16 items-center gap-2 transition-[width,height] ease-linear">
-			<div class="flex items-center gap-2 px-4">
-				<Sidebar.Trigger class="-ml-1" />
-				<Separator orientation="vertical" class="mr-2 data-[orientation=vertical]:h-4" />
-				<Breadcrumb.Root>
-					<Breadcrumb.List>
-						<Breadcrumb.Item class="hidden md:block">
-							<Breadcrumb.Link href="#">Weather</Breadcrumb.Link>
-						</Breadcrumb.Item>
-						<Breadcrumb.Separator class="hidden md:block" />
-						<Breadcrumb.Item>
-							<Breadcrumb.Page>{city || "Loading..."}</Breadcrumb.Page>
-						</Breadcrumb.Item>
-					</Breadcrumb.List>
-				</Breadcrumb.Root>
-			</div>
-		</header>
+<main class="min-h-screen flex flex-col items-center justify-start p-6 bg-white gap-6">
+	<h1 class="text-3xl font-bold text-gray-800">🌤️ Weather in {city || "..."}</h1>
 
-		<div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-			<div class="grid gap-4 md:grid-cols-1">
-				<div class="p-4 bg-card text-card-foreground rounded-xl shadow border space-y-4">
-					<!-- Search Input -->
-					<div class="flex gap-2">
-						<input
-							bind:value={inputCity}
-							placeholder="Enter city"
-							class="w-full px-3 py-2 rounded-md border text-sm"
-							on:keydown={(e) => e.key === 'Enter' && handleSearch()}
-						/>
-						<button
-							on:click={handleSearch}
-							class="px-4 py-2 bg-primary text-white rounded-md text-sm"
-						>
-							Search
-						</button>
-					</div>
+	<!-- Search Input -->
+	<div class="flex gap-2 w-full max-w-md">
+		<input
+			bind:value={inputCity}
+			placeholder="Enter city"
+			class="w-full px-3 py-2 rounded-md border text-sm"
+			on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+		/>
+		<button
+			on:click={handleSearch}
+			class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
+		>
+			Search
+		</button>
+	</div>
 
-					<!-- Weather Card -->
-					{#if weatherData}
-						<div class="space-y-1">
-							<h2 class="text-xl font-semibold">Weather in {city}</h2>
-							<p class="text-sm text-muted-foreground">
-								Condition: {weatherData.weather[0].description}
-							</p>
-							<p class="text-sm text-muted-foreground">
-								Temperature: {weatherData.main.temp}°C
-							</p>
-							<p class="text-sm text-muted-foreground">
-								Humidity: {weatherData.main.humidity}%
-							</p>
-							<p class="text-sm text-muted-foreground">
-								Wind: {weatherData.wind.speed} m/s
-							</p>
-						</div>
-					{:else}
-						<p class="text-sm text-muted-foreground">Loading or not found.</p>
-					{/if}
-				</div>
+	<!-- Weather Card -->
+	<div class="w-full max-w-md p-6 bg-gray-100 rounded-xl shadow space-y-3">
+		{#if weatherData}
+			<div class="space-y-1">
+				<h2 class="text-xl font-semibold">Weather in {city}</h2>
+				<p class="text-sm text-gray-700">Condition: {weatherData.weather[0].description}</p>
+				<p class="text-sm text-gray-700">Temperature: {weatherData.main.temp}°C</p>
+				<p class="text-sm text-gray-700">Humidity: {weatherData.main.humidity}%</p>
+				<p class="text-sm text-gray-700">Wind: {weatherData.wind.speed} m/s</p>
 			</div>
-		</div>
-	</Sidebar.Inset>
-</Sidebar.Provider>
+		{:else}
+			<p class="text-sm text-gray-500">Loading or not found.</p>
+		{/if}
+	</div>
+</main>
