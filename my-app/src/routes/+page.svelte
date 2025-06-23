@@ -1,27 +1,50 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import WeatherCard from '$lib/components/WeatherCard.svelte';
 
 	let city = "";
 	let inputCity = "";
 	let weatherData: any = null;
+	let backgroundUrl: string | null = null;
 
-	const apiKey = "d6fb02024500cd1d66d8d6aa60023ed5";
+	const weatherApiKey = "d6fb02024500cd1d66d8d6aa60023ed5";
+	const unsplashAccessKey = "kly3TeRHFZdjy6YUv3j4Jtx99JjdorqCbdrvmC14nxE";
+
+	// Use Unsplash search endpoint for city-specific results
+	async function fetchBackgroundImage(query: string) {
+		try {
+			const res = await fetch(
+				`https://api.unsplash.com/search/photos?query=${query}&client_id=${unsplashAccessKey}&orientation=landscape&per_page=1`
+			);
+			const data = await res.json();
+			if (data?.results?.[0]?.urls?.regular) {
+				backgroundUrl = data.results[0].urls.regular;
+			} else {
+				console.warn("No background image found for", query);
+				backgroundUrl = null;
+			}
+		} catch (err) {
+			console.error("Unsplash error:", err);
+			backgroundUrl = null;
+		}
+	}
 
 	async function fetchWeatherByCity(name: string) {
 		try {
 			const res = await fetch(
-				`https://api.openweathermap.org/data/2.5/weather?q=${name}&appid=${apiKey}&units=metric`
+				`https://api.openweathermap.org/data/2.5/weather?q=${name}&appid=${weatherApiKey}&units=metric`
 			);
 			const data = await res.json();
 			if (data.cod === 200) {
 				city = data.name;
 				weatherData = data;
+				await fetchBackgroundImage(city);
 			} else {
 				console.error("City not found:", data.message);
 				weatherData = null;
 			}
 		} catch (err) {
-			console.error("Fetch error:", err);
+			console.error("Weather fetch error:", err);
 			weatherData = null;
 		}
 	}
@@ -29,15 +52,16 @@
 	async function fetchWeatherByCoords(lat: number, lon: number) {
 		try {
 			const res = await fetch(
-				`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`
+				`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`
 			);
 			const data = await res.json();
 			if (data.cod === 200) {
 				city = data.name;
 				weatherData = data;
+				await fetchBackgroundImage(city);
 			}
 		} catch (err) {
-			console.error("Error with geolocation fetch:", err);
+			console.error("Geolocation weather fetch error:", err);
 		}
 	}
 
@@ -47,10 +71,7 @@
 				const { latitude, longitude } = pos.coords;
 				fetchWeatherByCoords(latitude, longitude);
 			},
-			(err) => {
-				console.error("Geolocation failed:", err);
-				fetchWeatherByCity("Nairobi"); // Fallback
-			}
+			() => fetchWeatherByCity("Nairobi")
 		);
 	});
 
@@ -61,37 +82,73 @@
 	}
 </script>
 
-<main class="min-h-screen flex flex-col items-center justify-start p-6 bg-white gap-6">
-	<h1 class="text-3xl font-bold text-gray-800">🌤️ Weather in {city || "..."}</h1>
+<main class="main-container" style:background-image={`url('${backgroundUrl}')`}>
+	<h1 class="app-title">🌤️ Weather in {city || "..."}</h1>
 
-	<!-- Search Input -->
-	<div class="flex gap-2 w-full max-w-md">
+	<div class="search-container">
 		<input
 			bind:value={inputCity}
 			placeholder="Enter city"
-			class="w-full px-3 py-2 rounded-md border text-sm"
+			class="search-input"
 			on:keydown={(e) => e.key === 'Enter' && handleSearch()}
 		/>
-		<button
-			on:click={handleSearch}
-			class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
-		>
-			Search
-		</button>
+		<button on:click={handleSearch} class="search-button">Search</button>
 	</div>
 
-	<!-- Weather Card -->
-	<div class="w-full max-w-md p-6 bg-gray-100 rounded-xl shadow space-y-3">
-		{#if weatherData}
-			<div class="space-y-1">
-				<h2 class="text-xl font-semibold">Weather in {city}</h2>
-				<p class="text-sm text-gray-700">Condition: {weatherData.weather[0].description}</p>
-				<p class="text-sm text-gray-700">Temperature: {weatherData.main.temp}°C</p>
-				<p class="text-sm text-gray-700">Humidity: {weatherData.main.humidity}%</p>
-				<p class="text-sm text-gray-700">Wind: {weatherData.wind.speed} m/s</p>
-			</div>
-		{:else}
-			<p class="text-sm text-gray-500">Loading or not found.</p>
-		{/if}
-	</div>
+	<WeatherCard {city} {weatherData} />
 </main>
+
+<style>
+	.main-container {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		padding: 1.5rem;
+		gap: 1.5rem;
+		background-size: cover;
+		background-position: center;
+		transition: background-image 0.5s ease-in-out;
+	}
+
+	.app-title {
+		font-size: 1.875rem;
+		font-weight: bold;
+		color: white;
+		text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+	}
+
+	.search-container {
+		display: flex;
+		gap: 0.5rem;
+		width: 100%;
+		max-width: 28rem;
+		background: rgba(255, 255, 255, 0.9);
+		backdrop-filter: blur(8px);
+		padding: 0.5rem;
+		border-radius: 0.375rem;
+	}
+
+	.search-input {
+		flex-grow: 1;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		border: 1px solid #ccc;
+		font-size: 0.875rem;
+	}
+
+	.search-button {
+		padding: 0.5rem 1rem;
+		background-color: #2563eb;
+		color: white;
+		border: none;
+		border-radius: 0.375rem;
+		cursor: pointer;
+		font-size: 0.875rem;
+	}
+
+	.search-button:hover {
+		background-color: #1d4ed8;
+	}
+</style>
