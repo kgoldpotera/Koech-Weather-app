@@ -5,12 +5,13 @@
 	let city = "";
 	let inputCity = "";
 	let weatherData: any = null;
+	let forecastData: any[] = [];
 	let backgroundUrl: string | null = null;
 
 	const weatherApiKey = "d6fb02024500cd1d66d8d6aa60023ed5";
+	const forecastApiKey = "07f2e63f07558908640ffa687ac2c733";
 	const unsplashAccessKey = "kly3TeRHFZdjy6YUv3j4Jtx99JjdorqCbdrvmC14nxE";
 
-	// Use Unsplash search endpoint for city-specific results
 	async function fetchBackgroundImage(query: string) {
 		try {
 			const res = await fetch(
@@ -29,6 +30,26 @@
 		}
 	}
 
+	async function fetchForecastByCity(name: string) {
+		try {
+			const res = await fetch(
+				`https://api.openweathermap.org/data/2.5/forecast?q=${name}&appid=${forecastApiKey}&units=metric`
+			);
+			const data = await res.json();
+			if (data.cod === "200") {
+				forecastData = data.list.filter((entry: any) =>
+					entry.dt_txt.includes("12:00:00")
+				);
+			} else {
+				console.warn("Forecast error:", data.message);
+				forecastData = [];
+			}
+		} catch (err) {
+			console.error("Forecast fetch error:", err);
+			forecastData = [];
+		}
+	}
+
 	async function fetchWeatherByCity(name: string) {
 		try {
 			const res = await fetch(
@@ -39,6 +60,7 @@
 				city = data.name;
 				weatherData = data;
 				await fetchBackgroundImage(city);
+				await fetchForecastByCity(city);
 			} else {
 				console.error("City not found:", data.message);
 				weatherData = null;
@@ -59,6 +81,7 @@
 				city = data.name;
 				weatherData = data;
 				await fetchBackgroundImage(city);
+				await fetchForecastByCity(city);
 			}
 		} catch (err) {
 			console.error("Geolocation weather fetch error:", err);
@@ -95,7 +118,7 @@
 		<button on:click={handleSearch} class="search-button">Search</button>
 	</div>
 
-	<WeatherCard {city} {weatherData} />
+	<WeatherCard {city} {weatherData} {forecastData} />
 </main>
 
 <style>
