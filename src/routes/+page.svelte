@@ -2,15 +2,26 @@
 	import { onMount } from 'svelte';
 	import WeatherCard from '$lib/components/WeatherCard.svelte';
 
-	let city = "";
-	let inputCity = "";
-	let weatherData: any = null;
-	let forecastData: any[] = [];
+	let city = '';
+	let inputCity = '';
+	let weatherData: {
+		main: { temp: number; humidity: number };
+		weather: { description: string; icon: string }[];
+		wind: { speed: number };
+		name: string;
+	} | null = null;
+
+	let forecastData: {
+		dt_txt: string;
+		main: { temp: number };
+		weather: { description: string; icon: string }[];
+	}[] = [];
+
 	let backgroundUrl: string | null = null;
 
-	const weatherApiKey = "d6fb02024500cd1d66d8d6aa60023ed5";
-	const forecastApiKey = "07f2e63f07558908640ffa687ac2c733";
-	const unsplashAccessKey = "kly3TeRHFZdjy6YUv3j4Jtx99JjdorqCbdrvmC14nxE";
+	const weatherApiKey = 'd6fb02024500cd1d66d8d6aa60023ed5';
+	const forecastApiKey = '07f2e63f07558908640ffa687ac2c733';
+	const unsplashAccessKey = 'kly3TeRHFZdjy6YUv3j4Jtx99JjdorqCbdrvmC14nxE';
 
 	async function fetchBackgroundImage(query: string) {
 		try {
@@ -21,11 +32,11 @@
 			if (data?.results?.[0]?.urls?.regular) {
 				backgroundUrl = data.results[0].urls.regular;
 			} else {
-				console.warn("No background image found for", query);
+				console.warn('No background image found for', query);
 				backgroundUrl = null;
 			}
 		} catch (err) {
-			console.error("Unsplash error:", err);
+			console.error('Unsplash error:', err);
 			backgroundUrl = null;
 		}
 	}
@@ -36,16 +47,16 @@
 				`https://api.openweathermap.org/data/2.5/forecast?q=${name}&appid=${forecastApiKey}&units=metric`
 			);
 			const data = await res.json();
-			if (data.cod === "200") {
-				forecastData = data.list.filter((entry: any) =>
-					entry.dt_txt.includes("12:00:00")
+			if (data.cod === '200') {
+				forecastData = data.list.filter((entry: { dt_txt: string }) =>
+					entry.dt_txt.includes('12:00:00')
 				);
 			} else {
-				console.warn("Forecast error:", data.message);
+				console.warn('Forecast error:', data.message);
 				forecastData = [];
 			}
 		} catch (err) {
-			console.error("Forecast fetch error:", err);
+			console.error('Forecast fetch error:', err);
 			forecastData = [];
 		}
 	}
@@ -62,11 +73,11 @@
 				await fetchBackgroundImage(city);
 				await fetchForecastByCity(city);
 			} else {
-				console.error("City not found:", data.message);
+				console.error('City not found:', data.message);
 				weatherData = null;
 			}
 		} catch (err) {
-			console.error("Weather fetch error:", err);
+			console.error('Weather fetch error:', err);
 			weatherData = null;
 		}
 	}
@@ -84,18 +95,33 @@
 				await fetchForecastByCity(city);
 			}
 		} catch (err) {
-			console.error("Geolocation weather fetch error:", err);
+			console.error('Geolocation weather fetch error:', err);
 		}
 	}
 
-	onMount(() => {
-		navigator.geolocation.getCurrentPosition(
-			(pos) => {
-				const { latitude, longitude } = pos.coords;
-				fetchWeatherByCoords(latitude, longitude);
-			},
-			() => fetchWeatherByCity("Nairobi")
-		);
+	onMount(async () => {
+		try {
+			const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+
+			if (status.state === 'granted' || status.state === 'prompt') {
+				navigator.geolocation.getCurrentPosition(
+					async (pos) => {
+						const { latitude, longitude } = pos.coords;
+						await fetchWeatherByCoords(latitude, longitude);
+					},
+					async (err) => {
+						console.warn('User denied or location error:', err.message);
+						await fetchWeatherByCity('Nairobi');
+					}
+				);
+			} else {
+				console.warn('Geolocation permission denied.');
+				await fetchWeatherByCity('Nairobi');
+			}
+		} catch (err) {
+			console.error('Permission query error:', err);
+			await fetchWeatherByCity('Nairobi');
+		}
 	});
 
 	function handleSearch() {
@@ -106,7 +132,7 @@
 </script>
 
 <main class="main-container" style:background-image={`url('${backgroundUrl}')`}>
-	<h1 class="app-title">🌤️ Weather in {city || "..."}</h1>
+	<h1 class="app-title">🌤️ Weather in {city || '...'}</h1>
 
 	<div class="search-container">
 		<input
